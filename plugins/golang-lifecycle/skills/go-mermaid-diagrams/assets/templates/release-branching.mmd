@@ -1,0 +1,26 @@
+%% Template: release-branching
+%% Use for: how module versions are tagged over time, including a v2 major bump.
+%% Canonical rules: tags are semantic versions prefixed with v; v2+ changes the
+%% module path (module example.com/mod/v2) and lives on its own line of development.
+gitGraph
+    commit id: "init"
+    commit id: "first API"
+    commit id: "v0.1.0" tag: "v0.1.0"
+    commit id: "breaking change is free before v1"
+    commit id: "v0.2.0" tag: "v0.2.0"
+    commit id: "API frozen"
+    commit id: "v1.0.0" tag: "v1.0.0"
+    branch release-v1
+    checkout release-v1
+    commit id: "backport fix"
+    commit id: "v1.0.1" tag: "v1.0.1"
+    checkout main
+    commit id: "additive feature"
+    commit id: "v1.1.0" tag: "v1.1.0"
+    checkout release-v1
+    merge main id: "sync v1 line"
+    checkout main
+    commit id: "go.mod -> /v2, imports updated"
+    commit id: "v2.0.0" tag: "v2.0.0"
+    commit id: "v2 additive feature"
+    commit id: "v2.1.0" tag: "v2.1.0"

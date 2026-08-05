@@ -1,0 +1,63 @@
+---
+description: House rules for writing Mermaid diagrams that parse on the first try and stay consistent across a Go codebase. Apply when authoring or editing diagrams in Markdown, .mmd files, or architecture docs.
+globs: **/*.md, **/*.mdx, **/*.mmd, **/*.mermaid
+alwaysApply: false
+---
+
+# Mermaid diagram conventions
+
+Start from a template in the `go-mermaid-diagrams` skill
+(`skills/go-mermaid-diagrams/assets/templates/`) instead of writing a diagram from
+memory. Every template in that directory is checked against the Mermaid parser, so
+starting there is the cheapest way to avoid a diagram that renders as an error box.
+
+## Non-negotiables
+
+1. **Declare the diagram type on the first line**: `flowchart TD`, `sequenceDiagram`,
+   `stateDiagram-v2`, `erDiagram`, `classDiagram`, `gitGraph`. A diagram with no
+   type declaration does not parse.
+2. **Use `stateDiagram-v2`, never `stateDiagram`.** Prefer `flowchart` over the older
+   `graph` keyword.
+3. **Quote every label that is not a bare word**: `A["Handler (HTTP)"]`, not
+   `A[Handler (HTTP)]`. Parentheses, commas, colons, slashes, braces and quotes all
+   break unquoted labels.
+4. **Never use a reserved word as a node ID**: `end`, `graph`, `subgraph`, `class`,
+   `style`, `click`, `link`, `state`, `o`, `x`. `end` is the single most common cause
+   of a broken flowchart. Use `done`, `finish`, `exit` instead.
+5. **Node IDs are ASCII letters, digits and underscores**, and they start with a
+   letter. Put the human-readable text in the label, not the ID.
+6. **Line breaks inside labels are `<br/>`**, self-closing. Bare `<br>` is unreliable.
+7. **`%%` comments live on their own line.** A trailing `%%` on a statement line is
+   parsed as content.
+8. **Match arrows to the diagram type.** `-->` `---` `-.->` `==>` belong to
+   flowcharts; `->>` `-->>` `-)` belong to sequence diagrams. Mixing them fails.
+9. **Every `subgraph`, `alt`, `opt`, `loop`, `par`, `critical` and composite `state`
+   block is closed by its own `end`** on its own line.
+10. **Keep one diagram per fenced block** and always tag the fence ```` ```mermaid ````.
+
+## House style for Go diagrams
+
+- Direction: `TD` for layering and call flow, `LR` for pipelines and CI.
+- One `subgraph` per deployment or module boundary; name it after the real thing
+  (`internal/order`, `cmd/api-server`, `Kubernetes namespace: payments`).
+- Label nodes with the actual Go identifier — package path, type, or function —
+  so the diagram can be diffed against the code.
+- Show goroutines as separate participants or nodes, and always draw the path that
+  terminates them (context cancellation, channel close, `done` signal). A concurrency
+  diagram with no exit path is documenting a leak.
+- Show error and cancellation edges, not just the happy path.
+- Define colours once with `classDef` and apply with `:::name`; do not scatter
+  inline `style` statements.
+
+## Before you commit a diagram
+
+Run the linter that ships with this plugin:
+
+```bash
+node plugins/golang-lifecycle/scripts/mermaid-lint.mjs docs/ README.md
+```
+
+It flags reserved-word IDs, unbalanced blocks, unquoted special characters, wrong
+arrow types for the declared diagram, and missing type declarations. If
+`@mermaid-js/mermaid-cli` is installed, add `--deep` to additionally run the real
+Mermaid parser.

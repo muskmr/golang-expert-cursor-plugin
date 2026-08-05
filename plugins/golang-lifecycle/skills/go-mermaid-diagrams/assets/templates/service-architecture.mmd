@@ -1,0 +1,38 @@
+%% Template: service-architecture
+%% Use for: one Go service shown in its runtime context.
+%% Replace: node labels with real binaries, packages and backing services.
+flowchart TD
+    classDef external fill:#1F2937,stroke:#4B5563,color:#F9FAFB
+    classDef goapp fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef datastore fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef async fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+
+    client["Client<br/>(web, mobile, CLI)"]:::external
+    lb["Load balancer / Ingress"]:::external
+
+    subgraph service["cmd/api-server"]
+        direction TD
+        transport["internal/transport/http<br/>router, middleware"]:::goapp
+        handler["internal/api<br/>request handlers"]:::goapp
+        domain["internal/order<br/>domain logic"]:::goapp
+        repo["internal/storage<br/>repository"]:::goapp
+        publisher["internal/events<br/>publisher"]:::goapp
+    end
+
+    postgres[("PostgreSQL")]:::datastore
+    cache[("Redis")]:::datastore
+    broker["Kafka topic: orders"]:::async
+    payments["Payments API<br/>(third party)"]:::external
+    otlp["OTLP collector"]:::external
+
+    client --> lb
+    lb --> transport
+    transport --> handler
+    handler --> domain
+    domain --> repo
+    domain --> publisher
+    repo --> postgres
+    repo --> cache
+    publisher --> broker
+    domain -->|"HTTP + context deadline"| payments
+    service -.->|"traces, metrics, slog"| otlp

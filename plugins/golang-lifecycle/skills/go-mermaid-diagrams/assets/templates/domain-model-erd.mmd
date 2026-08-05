@@ -1,0 +1,54 @@
+%% Template: domain-model-erd
+%% Use for: the relational model behind a Go service, matched to its Go structs.
+%% Keep column names in database casing and note the Go type where they differ.
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ ORDER_LINE : contains
+    ORDER ||--o| PAYMENT : "settled by"
+    PRODUCT ||--o{ ORDER_LINE : "referenced by"
+    CUSTOMER ||--o{ ADDRESS : has
+
+    CUSTOMER {
+        uuid id PK
+        text email UK
+        text display_name
+        timestamptz created_at
+    }
+
+    ADDRESS {
+        uuid id PK
+        uuid customer_id FK
+        text line1
+        text country_code "ISO 3166-1 alpha-2"
+    }
+
+    ORDER {
+        uuid id PK
+        uuid customer_id FK
+        text status "Go: order.Status"
+        bigint total_minor "Go: money.Amount"
+        text currency
+        timestamptz placed_at
+    }
+
+    ORDER_LINE {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        int quantity
+        bigint unit_price_minor
+    }
+
+    PRODUCT {
+        uuid id PK
+        text sku UK
+        text name
+    }
+
+    PAYMENT {
+        uuid id PK
+        uuid order_id FK
+        text provider_ref UK
+        text status
+        timestamptz captured_at
+    }

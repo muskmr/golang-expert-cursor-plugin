@@ -1,0 +1,38 @@
+%% Template: context-cancellation
+%% Use for: how a deadline or cancellation propagates down a call tree and unwinds.
+%% Rule: ctx is the first parameter, it is never stored in a struct, and every
+%% derived context has a matching defer cancel().
+sequenceDiagram
+    autonumber
+    participant Sig as signal.NotifyContext
+    participant Srv as http.Server
+    participant H as Handler
+    participant S as Service
+    participant Up as Upstream client
+    participant DB as database/sql
+
+    Sig->>Srv: root ctx (cancelled on SIGTERM)
+    Srv->>H: r.Context() derived from root
+    H->>H: ctx, cancel := context.WithTimeout(r.Context(), 3s)
+    Note over H: defer cancel() runs on every return path
+    H->>S: Do(ctx, input)
+    S->>Up: req.WithContext(ctx)
+    S->>DB: QueryContext(ctx, ...)
+
+    alt work completes before the deadline
+        Up-->>S: response
+        DB-->>S: rows
+        S-->>H: result, nil
+        H-->>Srv: 200 OK
+    else deadline exceeded
+        Up--)S: context.DeadlineExceeded
+        DB--)S: driver cancels the statement
+        S-->>H: wrapped context.DeadlineExceeded
+        H-->>Srv: 504 Gateway Timeout
+    else process receives SIGTERM
+        Sig--)Srv: root ctx cancelled
+        Srv--)H: request ctx cancelled
+        H--)S: ctx.Done() closed
+        S-->>H: context.Canceled
+        H-->>Srv: 503 Service Unavailable
+    end

@@ -1,0 +1,42 @@
+%% Template: deployment-topology
+%% Use for: where the Go binaries actually run and what runtime settings they get.
+%% Include GOMAXPROCS / GOMEMLIMIT next to the resource limits: since Go 1.25 the
+%% runtime reads the cgroup CPU limit, and GOMEMLIMIT should sit 5-10% under the
+%% memory limit.
+flowchart TD
+    classDef edge fill:#1F2937,stroke:#4B5563,color:#F9FAFB
+    classDef pod fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef data fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef obs fill:#4C1D95,stroke:#6D28D9,color:#F5F3FF
+
+    internet["Internet"]:::edge
+    cdn["CDN / WAF"]:::edge
+    ingress["Ingress controller<br/>TLS termination"]:::edge
+
+    subgraph cluster["Kubernetes cluster"]
+        subgraph nsapp["namespace: orders"]
+            api["Deployment: api-server<br/>replicas 6<br/>cpu limit 2, memory limit 1Gi<br/>GOMEMLIMIT=900MiB"]:::pod
+            worker["Deployment: worker<br/>replicas 3<br/>cpu limit 1, memory limit 512Mi<br/>GOMEMLIMIT=460MiB"]:::pod
+            job["CronJob: reconcile<br/>every 15m"]:::pod
+        end
+        subgraph nsobs["namespace: observability"]
+            collector["OTLP collector"]:::obs
+            prom["Prometheus"]:::obs
+        end
+    end
+
+    pg[("PostgreSQL<br/>primary + replica")]:::data
+    redis[("Redis")]:::data
+    kafka["Kafka cluster<br/>topic: orders"]:::data
+
+    internet --> cdn --> ingress --> api
+    api --> pg
+    api --> redis
+    api --> kafka
+    kafka --> worker
+    worker --> pg
+    job --> pg
+    api -.->|"OTLP gRPC"| collector
+    worker -.->|"OTLP gRPC"| collector
+    collector -.-> prom
+    api -.->|"/debug/pprof on an internal port only"| collector

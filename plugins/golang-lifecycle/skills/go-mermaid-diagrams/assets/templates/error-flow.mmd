@@ -1,0 +1,35 @@
+%% Template: error-flow
+%% Use for: deciding how an error crosses each package boundary.
+%% Canonical rule (go.dev/blog/go1.13-errors): wrap to expose an error to callers,
+%% do not wrap when that would expose an implementation detail.
+flowchart TD
+    classDef decision fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef action fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef bad fill:#7F1D1D,stroke:#B91C1C,color:#FEE2E2
+    classDef good fill:#065F46,stroke:#047857,color:#ECFDF5
+
+    start["Callee returns a non-nil error"]:::action
+    q1{"Can this caller<br/>handle it here?"}:::decision
+    handle["Handle it and return nil<br/>(log once, at the boundary)"]:::good
+    q2{"Is the cause part of<br/>your package's API contract?"}:::decision
+    wrap["return fmt.Errorf(&quot;op: %w&quot;, err)<br/>callers may use errors.Is / errors.As"]:::good
+    hide["return fmt.Errorf(&quot;op: %v&quot;, err)<br/>cause stays an implementation detail"]:::good
+    q3{"Is it a distinguishable<br/>condition callers branch on?"}:::decision
+    sentinel["Export var ErrNotFound = errors.New(&quot;pkg: not found&quot;)<br/>and wrap it"]:::good
+    typed["Export a *PathError-style type<br/>with fields; match with errors.As"]:::good
+    swallow["err ignored with _"]:::bad
+    naked["return err with no operation context"]:::bad
+    panicking["panic across a package boundary"]:::bad
+
+    start --> q1
+    q1 -->|"yes"| handle
+    q1 -->|"no"| q2
+    q2 -->|"yes"| q3
+    q2 -->|"no"| hide
+    q3 -->|"a single condition"| sentinel
+    q3 -->|"needs detail fields"| typed
+    q3 -->|"no branching needed"| wrap
+
+    swallow -.->|"never"| start
+    naked -.->|"loses the origin prefix"| wrap
+    panicking -.->|"only for impossible states"| start

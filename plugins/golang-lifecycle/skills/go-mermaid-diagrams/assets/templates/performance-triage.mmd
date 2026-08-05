@@ -1,0 +1,48 @@
+%% Template: performance-triage
+%% Use for: choosing the right diagnostic tool. Mirrors the order recommended by
+%% the official Go GC guide: CPU profile first, then execution trace, then GC trace,
+%% then heap profile. Never tune a knob before a profile says which one.
+flowchart TD
+    classDef step fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef check fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef fix fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef warn fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+
+    start["Reproducible benchmark or<br/>production profile in hand"]:::step
+    cpu["go tool pprof cpu.out<br/>top -cum, then list"]:::step
+    q1{"Which frame dominates?"}:::check
+
+    gcmark["runtime.gcBgMarkWorker<br/>baseline GC mark cost"]:::step
+    malloc["runtime.mallocgc above ~15%<br/>allocation-heavy"]:::step
+    assist["runtime.gcAssistAlloc above ~5%<br/>allocation outruns the collector"]:::step
+    appcode["your own functions"]:::step
+    idle["nothing obvious"]:::step
+
+    heap["Heap profile, alloc_space view<br/>go tool pprof -sample_index=alloc_space"]:::step
+    escape["go build -gcflags=-m=3<br/>find escapes to the heap"]:::step
+    reduce["Reduce allocations: reuse buffers,<br/>preallocate slices, avoid pointer-heavy<br/>structs, drop needless interface boxing"]:::fix
+    knob["Only now: raise GOGC and/or set<br/>GOMEMLIMIT with 5-10% headroom"]:::warn
+    algo["Fix the algorithm or data structure<br/>before micro-optimising"]:::fix
+
+    trace["Execution trace: go tool trace<br/>latency, blocking, poor parallelism"]:::step
+    gctrace["GODEBUG=gctrace=1<br/>one line per GC cycle"]:::step
+    block["Block and mutex profiles<br/>SetBlockProfileRate / SetMutexProfileFraction"]:::step
+    contention["Reduce contention: shard the lock,<br/>shorten the critical section,<br/>or remove the shared state"]:::fix
+    pgo["Collect a production CPU profile,<br/>save it as default.pgo, rebuild"]:::fix
+    verify["Re-benchmark and compare<br/>with benchstat before and after"]:::fix
+
+    start --> cpu --> q1
+    q1 --> gcmark
+    q1 --> malloc
+    q1 --> assist
+    q1 --> appcode
+    q1 --> idle
+    gcmark --> heap
+    malloc --> heap
+    assist --> heap
+    heap --> escape --> reduce --> verify
+    reduce --> knob --> verify
+    appcode --> algo --> pgo --> verify
+    idle --> trace
+    trace --> block --> contention --> verify
+    trace --> gctrace --> heap

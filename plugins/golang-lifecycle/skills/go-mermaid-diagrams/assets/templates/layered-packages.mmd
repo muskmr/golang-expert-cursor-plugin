@@ -1,0 +1,40 @@
+%% Template: layered-packages
+%% Use for: the canonical go.dev server layout - binaries in cmd/, logic in internal/.
+%% Rule being illustrated: dependencies point downward only; no arrow may point up.
+flowchart TD
+    classDef entry fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef app fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef core fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef infra fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+
+    subgraph cmd["cmd/ - process entry points"]
+        apiserver["cmd/api-server"]:::entry
+        worker["cmd/worker"]:::entry
+        migrate["cmd/migrate"]:::entry
+    end
+
+    subgraph adapters["internal/ - inbound and outbound adapters"]
+        http["internal/transport/http"]:::app
+        consumer["internal/transport/kafka"]:::app
+        storage["internal/storage/postgres"]:::infra
+        client["internal/client/payments"]:::infra
+    end
+
+    subgraph coredomain["internal/ - domain"]
+        order["internal/order"]:::core
+        billing["internal/billing"]:::core
+        platform["internal/platform<br/>config, logging, telemetry"]:::core
+    end
+
+    apiserver --> http
+    worker --> consumer
+    migrate --> storage
+    http --> order
+    consumer --> order
+    order --> billing
+    order --> storage
+    order --> client
+    billing --> storage
+    http --> platform
+    order --> platform
+    storage --> platform

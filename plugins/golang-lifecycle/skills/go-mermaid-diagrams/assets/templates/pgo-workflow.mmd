@@ -1,0 +1,26 @@
+%% Template: pgo-workflow
+%% Use for: the profile-guided optimization loop from go.dev/doc/pgo.
+%% The loop is deliberately circular: each release is built with a profile
+%% collected from the previous release running in production.
+flowchart LR
+    classDef step fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef note fill:#0F172A,stroke:#334155,color:#E2E8F0
+
+    build0["Build and release<br/>without a profile"]:::step
+    collect["Collect CPU profiles in production<br/>/debug/pprof/profile?seconds=30"]:::step
+    merge["Merge samples across replicas<br/>go tool pprof -proto a b > merged.pprof"]:::step
+    commit["Commit as default.pgo in the<br/>main package directory"]:::step
+    build1["go build (-pgo=auto is the default)"]:::step
+    ship["Release the PGO build"]:::step
+    measure["Compare with benchstat;<br/>expect roughly 2-14%"]:::step
+
+    build0 --> collect --> merge --> commit --> build1 --> ship --> measure
+    measure --> collect
+
+    n1["Profiles must come from a<br/>representative production workload.<br/>Microbenchmarks are poor sources."]:::note
+    n2["Profiles go stale as hot functions move.<br/>Refresh after large refactors."]:::note
+    n3["-pgo=path applies to every main package<br/>in one go build invocation."]:::note
+
+    collect -.- n1
+    commit -.- n2
+    build1 -.- n3

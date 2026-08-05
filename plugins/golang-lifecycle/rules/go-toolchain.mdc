@@ -1,0 +1,90 @@
+---
+description: The canonical Go command set and toolchain settings - which command to run for build, test, vet, fix, modules, vulnerabilities and profiling, and which flags actually exist. Apply in any Go repository.
+globs: **/*.go, go.mod, go.work, Makefile, **/*.mk, .github/workflows/*.yml, .github/workflows/*.yaml
+alwaysApply: false
+---
+
+# Go toolchain
+
+Use the commands below verbatim. Do not invent flags; if you are unsure, run
+`go help <topic>` or `go doc <pkg>` and read the real output before acting.
+
+## Everyday loop
+
+```bash
+go build ./...                 # compile everything
+go vet ./...                   # canonical static analysis; treat findings as defects
+go test ./...                  # run tests
+go test -race ./...            # required for anything concurrent
+gofmt -l .                     # any output means unformatted files
+go mod tidy                    # sync go.mod/go.sum with the actual imports
+```
+
+## Modules and dependencies
+
+```bash
+go get example.com/mod@v1.2.3  # add or move a dependency to an exact version
+go get -u ./...                # upgrade dependencies (review the diff, do not blind-merge)
+go get -tool example.com/cmd/x # Go 1.24+: record a tool dependency in go.mod
+go tool x                      # run a tool recorded by a tool directive
+go list -m -u all              # available updates
+go mod graph                   # module requirement graph
+go mod why -m example.com/mod  # why is this module in the build
+go mod verify                  # checksums of downloaded modules
+```
+
+`go.mod` `tool` directives (Go 1.24+) replace the old `tools.go` blank-import hack.
+`go get tool` upgrades every tool; `go install tool` installs them all to `GOBIN`.
+
+## Correctness and security
+
+```bash
+go vet ./...
+go test -race ./...
+go test -fuzz=FuzzName -fuzztime=30s ./pkg    # fuzz one target at a time
+govulncheck ./...                              # go install golang.org/x/vuln/cmd/govulncheck@latest
+go test -cover ./...
+```
+
+## Performance
+
+```bash
+go test -run=^$ -bench=. -benchmem ./...
+go test -run=^$ -bench=BenchmarkX -cpuprofile=cpu.out -memprofile=mem.out ./pkg
+go tool pprof -http=: cpu.out
+go tool trace trace.out
+go build -gcflags=-m=3 ./...    # escape analysis
+```
+
+Profile-guided optimization: put a representative production CPU profile at
+`default.pgo` in the main package directory and `go build` picks it up
+(`-pgo=auto` is the default since Go 1.21; `-pgo=off` disables).
+
+## Toolchain version
+
+- `go.mod`'s `go` line is the minimum language/toolchain version and it also selects
+  GODEBUG compatibility defaults. Change it with `go get go@1.N.P`, not by hand.
+- `GOTOOLCHAIN=auto` (the shipped default) lets the `go` command download and run a
+  newer toolchain when `go.mod` or `go.work` asks for one. `GOTOOLCHAIN=local`
+  pins to the installed toolchain.
+- Debug toolchain selection with `GODEBUG=toolchaintrace=1 go build ./...`.
+
+## Modernization
+
+Go 1.26 rebuilt `go fix` on the `go vet` analysis framework as the home of Go's
+*modernizers*: `go fix ./...` mechanically updates a codebase to current idioms and
+APIs without changing behaviour. On older toolchains use
+`go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest ./...`.
+Always review the diff and run the tests afterwards.
+
+## Runtime settings worth knowing
+
+| Setting | Effect |
+| --- | --- |
+| `GOGC` | Heap growth target; `GOGC=off` disables GC. Doubling it roughly halves GC CPU and doubles heap overhead. |
+| `GOMEMLIMIT` | Soft total-memory limit (Go 1.19+). Leave 5–10% headroom. |
+| `GOMAXPROCS` | Since Go 1.25 defaults to the cgroup CPU limit on Linux and updates dynamically. |
+| `GODEBUG=gctrace=1` | One line per GC cycle. |
+| `GODEBUG=inittrace=1` | Package init cost. |
+| `GODEBUG=schedtrace=1000` | Scheduler state every second. |
+| `GORACE` | Race detector options (`log_path`, `halt_on_error`, ...). |

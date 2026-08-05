@@ -1,0 +1,27 @@
+%% Template: package-dependency-graph
+%% Use for: the real import graph of one module, derived from
+%%   go list -deps -f '{{.ImportPath}} {{join .Imports " "}}' ./...
+%% Highlight cycles and upward dependencies in red; they are the findings.
+flowchart LR
+    classDef pkg fill:#0F172A,stroke:#334155,color:#E2E8F0
+    classDef leaf fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef problem fill:#7F1D1D,stroke:#B91C1C,color:#FEE2E2
+
+    main["cmd/api-server"]:::pkg
+    api["internal/api"]:::pkg
+    order["internal/order"]:::pkg
+    billing["internal/billing"]:::pkg
+    store["internal/storage"]:::pkg
+    money["internal/money"]:::leaf
+    errs["internal/errs"]:::leaf
+
+    main --> api
+    api --> order
+    api --> billing
+    order --> store
+    order --> money
+    billing --> money
+    store --> errs
+    order --> errs
+    billing -->|"cycle: billing imports order,<br/>order imports billing"| order:::problem
+    order -.->|"remove this edge:<br/>move shared types to internal/money"| billing

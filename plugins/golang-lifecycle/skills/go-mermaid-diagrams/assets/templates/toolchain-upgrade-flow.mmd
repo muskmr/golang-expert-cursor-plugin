@@ -1,0 +1,30 @@
+%% Template: toolchain-upgrade-flow
+%% Use for: planning a Go toolchain upgrade. Mirrors go.dev/doc/toolchain and
+%% go.dev/doc/godebug: the go line in go.mod selects GODEBUG compatibility defaults,
+%% so bumping it is a behaviour change, not just metadata.
+flowchart TD
+    classDef step fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef check fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef done fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef risk fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+
+    start["Current: go.mod says go 1.N"]:::step
+    read["Read release notes for every version<br/>from 1.N+1 to the target"]:::step
+    toolchain["Install the target toolchain<br/>keep go.mod unchanged"]:::step
+    build1{"go build ./... and<br/>go test ./... still pass?"}:::check
+    fixbuild["Fix compile and test failures<br/>caused by the newer toolchain"]:::risk
+    bumpgo["go get go@1.M<br/>bump the go line"]:::step
+    godebug["Check go.dev/doc/godebug for settings<br/>whose default changed at 1.M"]:::risk
+    build2{"Tests, race detector and<br/>integration suite pass?"}:::check
+    pin["Pin a specific behaviour with<br/>//go:debug setting=value in package main"]:::risk
+    modernize["go fix ./... to adopt new idioms<br/>(Go 1.26 modernizers)"]:::step
+    vuln["govulncheck ./...<br/>confirm no new findings"]:::step
+    perf["Re-run benchmarks and compare<br/>with benchstat"]:::step
+    ship["Update CI go-version, container base<br/>image and toolchain line, then ship"]:::done
+
+    start --> read --> toolchain --> build1
+    build1 -->|"no"| fixbuild --> build1
+    build1 -->|"yes"| bumpgo --> godebug --> build2
+    build2 -->|"no, and the cause is a<br/>GODEBUG-controlled change"| pin --> build2
+    build2 -->|"no, real regression"| fixbuild
+    build2 -->|"yes"| modernize --> vuln --> perf --> ship

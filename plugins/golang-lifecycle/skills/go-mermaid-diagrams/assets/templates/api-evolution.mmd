@@ -1,0 +1,51 @@
+%% Template: api-evolution
+%% Use for: choosing a backward-compatible way to extend a Go API.
+%% Canonical rule (go.dev/blog/module-compatibility): "add, don't change or remove".
+%% There is no backward-compatible change to a function signature.
+flowchart TD
+    classDef check fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef ok fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef warn fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+    classDef bad fill:#7F1D1D,stroke:#B91C1C,color:#FEE2E2
+
+    want["You need to extend an exported API"]:::check
+    what{"What are you changing?"}:::check
+
+    fnsig{"A function or method signature"}:::check
+    newfn["Add a new function or method instead.<br/>QueryContext next to Query; the old one<br/>delegates to the new one."]:::ok
+    optstruct["Or take an options struct pointer<br/>so future fields are additive."]:::ok
+    variadic["Adding a variadic parameter"]:::bad
+
+    iface{"An interface"}:::check
+    newiface["Define a new interface with the extra<br/>method and type-assert for it at use sites."]:::ok
+    privmethod["If users should not implement it,<br/>add an unexported method now."]:::ok
+    addmethod["Adding a method to a published interface"]:::bad
+
+    strct{"A struct"}:::check
+    addfield["Add a field whose zero value keeps<br/>the old behaviour."]:::ok
+    comparable["Do not add a non-comparable field to a<br/>comparable struct; it breaks == on the type."]:::warn
+
+    behaviour{"Runtime behaviour"}:::check
+    optin["Add an opt-in configuration method,<br/>like Decoder.DisallowUnknownFields."]:::ok
+
+    remove{"Removing or renaming"}:::check
+    deprecate["Keep it, add a Deprecated: paragraph<br/>pointing at the replacement."]:::ok
+    major["If it truly cannot be additive:<br/>new major version, new module path<br/>(module example.com/mod/v2)."]:::warn
+
+    want --> what
+    what --> fnsig
+    what --> iface
+    what --> strct
+    what --> behaviour
+    what --> remove
+
+    fnsig --> newfn
+    fnsig --> optstruct
+    fnsig -.->|"looks safe, is not"| variadic
+    iface --> newiface
+    iface --> privmethod
+    iface -.->|"breaks every implementer"| addmethod
+    strct --> addfield --> comparable
+    behaviour --> optin
+    remove --> deprecate
+    deprecate --> major

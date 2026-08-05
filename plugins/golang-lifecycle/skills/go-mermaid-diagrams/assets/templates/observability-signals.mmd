@@ -1,0 +1,50 @@
+%% Template: observability-signals
+%% Use for: which signal each part of a Go service emits and where it lands.
+%% Keep the Go package that produces each signal in the label.
+flowchart LR
+    classDef app fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef signal fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef sink fill:#4C1D95,stroke:#6D28D9,color:#F5F3FF
+    classDef ops fill:#065F46,stroke:#047857,color:#ECFDF5
+
+    subgraph svc["Go service"]
+        handler["handlers"]:::app
+        domain["domain packages"]:::app
+        runtimepkg["runtime and runtime/metrics"]:::app
+        pprofmux["net/http/pprof<br/>internal port only"]:::app
+    end
+
+    logs["Structured logs<br/>log/slog JSONHandler"]:::signal
+    metrics["Metrics<br/>counters, histograms, /metrics"]:::signal
+    traces["Traces<br/>OpenTelemetry spans"]:::signal
+    profiles["Profiles<br/>cpu, heap, goroutine, mutex, block"]:::signal
+    events["Runtime events<br/>execution trace, FlightRecorder"]:::signal
+
+    collector["OTLP collector"]:::sink
+    logstore[("Log store")]:::sink
+    tsdb[("Metric store")]:::sink
+    tracestore[("Trace store")]:::sink
+    profstore[("Continuous profiling")]:::sink
+
+    slo["SLO dashboards and alerts"]:::ops
+    debugging["Incident debugging"]:::ops
+
+    handler --> logs
+    handler --> traces
+    handler --> metrics
+    domain --> logs
+    domain --> traces
+    runtimepkg --> metrics
+    pprofmux --> profiles
+    runtimepkg --> events
+
+    logs --> collector --> logstore
+    metrics --> collector --> tsdb
+    traces --> collector --> tracestore
+    profiles --> profstore
+    events --> profstore
+
+    tsdb --> slo
+    logstore --> debugging
+    tracestore --> debugging
+    profstore --> debugging
