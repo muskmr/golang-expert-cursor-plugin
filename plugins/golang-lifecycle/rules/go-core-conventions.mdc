@@ -1,0 +1,84 @@
+---
+description: Canonical Go writing conventions from Effective Go and the Go Doc Comments guide - naming, formatting, doc comments, errors, and control flow. Apply when writing or editing Go source.
+globs: **/*.go
+alwaysApply: false
+---
+
+# Go core conventions
+
+Source of truth: [Effective Go](https://go.dev/doc/effective_go),
+[Go Doc Comments](https://go.dev/doc/comment). When this rule and a project's own
+conventions disagree, follow the project and say so.
+
+## Formatting
+
+- `gofmt` output is the only correct formatting. Never hand-format; never argue with it.
+  Run `gofmt -l .` and treat any output as a defect.
+- Tabs indent, spaces align. There is no line-length limit; break long lines with an
+  extra tab of indentation rather than inventing a wrap column.
+- Since Go 1.19 `gofmt` also reformats doc comments, so let it own list, heading and
+  code-block layout inside comments too.
+
+## Naming
+
+- Package names: lower case, single word, no underscores, no mixedCaps. The package
+  name is the last element of the import path (`encoding/base64` → `base64`).
+- Never name a package `util`, `common`, `misc`, `helpers`, `types`, or `api` — those
+  "provide clients with no sense of what the package contains".
+- Avoid stutter. From package `http`, the type is `Server`, not `HTTPServer`;
+  the constructor is `list.New()`, not `list.NewList()`.
+- Use `MixedCaps` / `mixedCaps`, never `snake_case`, for multiword names.
+- One-method interfaces take the method name plus `-er`: `Reader`, `Writer`,
+  `Formatter`. Do not reuse canonical method names (`Read`, `Write`, `Close`,
+  `String`, `Len`) unless the signature and meaning match.
+- Getters drop `Get`: field `owner` → method `Owner()`, setter `SetOwner()`.
+- Keep the receiver name identical across every method of a type.
+- Sentinel errors are `ErrSomething`; error types are `SomethingError`.
+
+## Doc comments
+
+- Every exported identifier gets a doc comment, immediately above the declaration
+  with no blank line between.
+- Write complete sentences that begin with the name being documented:
+  `// Quote returns a double-quoted Go string literal ...`, `// A Reader serves ...`,
+  `// Package tar implements ...`.
+- Boolean-returning functions say "reports whether", never "returns true if ... or not".
+- Deprecate with a paragraph starting `Deprecated: ` and pointing at the replacement.
+- Link to other symbols with doc links: `[Name]`, `[pkg.Name]`, `[*bytes.Buffer]`.
+- Headings are `# Heading` (hash, space, blank line before and after, unindented).
+
+## Errors
+
+- Return errors; do not panic across a package boundary. `panic` is for
+  impossible states, and `recover` only ever runs inside a deferred function.
+- Never discard an error with `_`. Handle it, wrap it, or explain in a comment why
+  dropping it is correct.
+- Prefix error strings with their origin: `"image: unknown format"`.
+- Wrap with `%w` **only** when the wrapped error is part of your API contract:
+  "Wrap an error to expose it to callers. Do not wrap an error when doing so would
+  expose implementation details." To hide the cause, format with `%v`.
+- Inspect with `errors.Is` and `errors.As`, never with `==` on a wrapped error and
+  never by string matching.
+- Return `fmt.Errorf("...: %w", ErrNotFound)` rather than the bare sentinel so callers
+  get context and `errors.Is` still works.
+
+## Control flow and structure
+
+- Handle the error case first and return early; do not write `else` after a `return`.
+- Prefer `for i := range n` / `for i, v := range s` over manual index arithmetic.
+- Do not build abstractions before there are two concrete users of them.
+- Reach for a type parameter only after you have written the same code for different
+  types more than once. If all you need is to call a method, use an interface,
+  not a type parameter.
+
+## Concurrency
+
+- "Do not communicate by sharing memory; instead, share memory by communicating."
+- Every goroutine needs a defined exit path. If you cannot say what stops it,
+  it is a leak.
+- Pass `context.Context` as the first parameter (`ctx`) on any call path that can
+  block, do I/O, or cross a process boundary. Never store one in a struct field.
+- Bound parallelism with a fixed worker count; do not spawn one goroutine per item
+  of unbounded input.
+- Maps are not safe for concurrent write; guard with `sync.RWMutex` or redesign.
+- Run tests for concurrent code with `-race`.

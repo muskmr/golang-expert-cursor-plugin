@@ -1,0 +1,56 @@
+---
+description: Canonical Go module and repository layout from go.dev/doc/modules/layout, plus module path and versioning rules. Apply when creating packages, moving files, or editing go.mod.
+globs: go.mod, go.sum, go.work, **/*.go
+alwaysApply: false
+---
+
+# Go project layout
+
+Source of truth: [Organizing a Go module](https://go.dev/doc/modules/layout),
+[Module version numbering](https://go.dev/doc/modules/version-numbers).
+These are the layouts the Go team documents. `pkg/`, `api/`, `configs/` and the rest
+of the widely copied "standard project layout" are **not** part of them — do not
+introduce those directories unless the repository already uses them.
+
+## Pick the layout that matches the project type
+
+| Project type | Layout |
+| --- | --- |
+| Basic package | `go.mod` + `modname.go` + `modname_test.go` at the root |
+| Basic command | `go.mod` + `main.go` (and friends) at the root, all `package main` |
+| Package with supporting code | Root package + `internal/<name>/` for everything not exported |
+| Multiple packages | One directory per package, hierarchical, plus `internal/` |
+| Multiple commands | `cmd/prog1/main.go`, `cmd/prog2/main.go`, shared code in `internal/` |
+| Server | `cmd/<binary>/main.go` for each binary, **all logic in `internal/`** |
+
+## Rules that follow from that
+
+- Default to `internal/`. Code under `internal/` cannot be imported by other modules,
+  so you stay free to refactor it. Export a package only when an external caller
+  genuinely needs it and you are prepared to support it forever.
+- A server is a self-contained binary: it should normally export nothing. If part of
+  it becomes useful elsewhere, split that part into its own module.
+- The `cmd/` directory is only needed when the repository mixes commands with
+  importable packages, or has more than one binary. A single-binary repo can put
+  `main.go` at the root.
+- The `module` line must be the repository URL without a scheme
+  (`module github.com/someuser/modname`), because that is how the `go` command
+  locates the source.
+- Files in a directory all declare the same package. Test files are `_test.go`
+  in the same directory.
+
+## Versioning
+
+- Semantic versioning is a contract, not decoration:
+  - `v0.x.x` — unstable, no compatibility guarantee.
+  - `vX.Y.**Z**` — no public API or dependency change.
+  - `vX.**Y**.x` — backward-compatible additions.
+  - `**vX**.y.z` — backward-incompatible changes.
+- Major versions `v2` and above change the module path:
+  `module example.com/mymodule/v2`. Imports change too. Treat a major bump as the
+  last resort, not the routine way to ship a breaking change.
+- Never hand-write a pseudo-version (`v0.0.0-20170915032832-14c0d48ead0c`).
+  Let the `go` command generate it.
+- The `go` line in `go.mod` is a hard minimum: a toolchain refuses to build a module
+  that requires a newer version than itself, and your `go` line must be at least as
+  new as every module you require.

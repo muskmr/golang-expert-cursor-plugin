@@ -1,0 +1,40 @@
+%% Template: goroutine-pipeline
+%% Use for: a fan-out / fan-in pipeline built from channels (go.dev/blog/pipelines).
+%% Every stage must show: who closes its outbound channel, and how cancellation arrives.
+flowchart LR
+    classDef stage fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef chan fill:#0F172A,stroke:#334155,color:#E2E8F0
+    classDef ctrl fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+
+    source["generator goroutine<br/>closes out on return"]:::stage
+    ch1(["chan int (unbuffered)"]):::chan
+
+    subgraph fanout["fan-out: N worker goroutines"]
+        direction TD
+        w1["worker 1<br/>square(ctx, in)"]:::stage
+        w2["worker 2<br/>square(ctx, in)"]:::stage
+        w3["worker N<br/>square(ctx, in)"]:::stage
+    end
+
+    ch2(["chan result (per worker)"]):::chan
+    merge["merge goroutine<br/>sync.WaitGroup then close(out)"]:::stage
+    ch3(["chan result (merged)"]):::chan
+    sink["consumer<br/>ranges until channel closed"]:::stage
+
+    ctx["context.WithCancel<br/>ctx.Done()"]:::ctrl
+
+    source --> ch1
+    ch1 --> w1
+    ch1 --> w2
+    ch1 --> w3
+    w1 --> ch2
+    w2 --> ch2
+    w3 --> ch2
+    ch2 --> merge
+    merge --> ch3
+    ch3 --> sink
+
+    ctx -.->|"select on ctx.Done()<br/>in every send"| source
+    ctx -.-> fanout
+    ctx -.-> merge
+    sink -.->|"cancel() on early return<br/>unblocks all senders"| ctx

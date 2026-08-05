@@ -1,0 +1,61 @@
+%% Template: interfaces-and-types
+%% Use for: Go interfaces, their implementations, and struct embedding.
+%% Mermaid has no Go notation, so use these conventions consistently:
+%%   <<interface>>  = Go interface
+%%   ..|>           = type implements interface (implicit satisfaction)
+%%   *--            = struct embeds or owns another type
+%%   -->            = type depends on an interface it consumes
+classDiagram
+    direction LR
+
+    class OrderStore {
+        <<interface>>
+        +Get(ctx, id) (Order, error)
+        +Save(ctx, o Order) error
+    }
+
+    class Publisher {
+        <<interface>>
+        +Publish(ctx, e Event) error
+    }
+
+    class PostgresStore {
+        -db *sql.DB
+        +Get(ctx, id) (Order, error)
+        +Save(ctx, o Order) error
+    }
+
+    class MemoryStore {
+        -mu sync.RWMutex
+        -items map~string~Order
+        +Get(ctx, id) (Order, error)
+        +Save(ctx, o Order) error
+    }
+
+    class KafkaPublisher {
+        -w *kafka.Writer
+        +Publish(ctx, e Event) error
+    }
+
+    class Service {
+        -store OrderStore
+        -events Publisher
+        -log *slog.Logger
+        +CreateOrder(ctx, cmd) (Order, error)
+    }
+
+    class Order {
+        +ID string
+        +Total money.Amount
+        +Status Status
+    }
+
+    OrderStore <|.. PostgresStore : implements
+    OrderStore <|.. MemoryStore : implements
+    Publisher <|.. KafkaPublisher : implements
+    Service --> OrderStore : depends on
+    Service --> Publisher : depends on
+    Service ..> Order : returns
+    PostgresStore ..> Order : scans into
+
+    note for OrderStore "Declare the interface in the consuming package.\nKeep it to the methods Service actually calls."

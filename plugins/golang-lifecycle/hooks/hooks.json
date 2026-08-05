@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "./scripts/hooks/after-file-edit.sh",
+        "matcher": "Write|TabWrite"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "./scripts/hooks/before-shell.sh",
+        "matcher": "rm|curl|wget|git|go get"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "./scripts/hooks/session-end.sh"
+      }
+    ]
+  }
+}

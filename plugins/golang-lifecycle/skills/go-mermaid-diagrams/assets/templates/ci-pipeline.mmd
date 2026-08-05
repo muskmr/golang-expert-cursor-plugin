@@ -1,0 +1,35 @@
+%% Template: ci-pipeline
+%% Use for: the CI gates a Go repository enforces. Each node is a real command.
+%% Order matters: cheap and deterministic checks first, expensive ones last.
+flowchart LR
+    classDef gate fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef slow fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef release fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef fail fill:#7F1D1D,stroke:#B91C1C,color:#FEE2E2
+
+    push["push / pull request"]:::gate
+    setup["actions/setup-go<br/>go version from go.mod"]:::gate
+    fmtcheck["gofmt -l .<br/>fails if output is non-empty"]:::gate
+    tidy["go mod tidy<br/>then git diff --exit-code"]:::gate
+    build["go build ./..."]:::gate
+    vet["go vet ./..."]:::gate
+    unit["go test ./... -count=1"]:::gate
+    race["go test -race ./..."]:::slow
+    cover["go test -coverprofile=cover.out ./...<br/>go tool cover -func=cover.out"]:::slow
+    vuln["govulncheck ./..."]:::slow
+    fuzz["go test -run=^$ -fuzz=Fuzz -fuzztime=60s<br/>nightly only"]:::slow
+    bench["benchmarks vs base<br/>benchstat old.txt new.txt"]:::slow
+    artifact["go build -trimpath -ldflags=&quot;-s -w&quot;<br/>buildvcs stamps the version"]:::release
+    tag["git tag vX.Y.Z<br/>push tag"]:::release
+    blocked["pipeline fails<br/>no artifact is produced"]:::fail
+
+    push --> setup --> fmtcheck --> tidy --> build --> vet --> unit --> race
+    race --> cover
+    cover --> vuln
+    vuln --> artifact --> tag
+    push -.-> fuzz
+    push -.-> bench
+    fmtcheck -.->|"any check fails"| blocked
+    vet -.-> blocked
+    race -.-> blocked
+    vuln -.->|"reachable vulnerability"| blocked

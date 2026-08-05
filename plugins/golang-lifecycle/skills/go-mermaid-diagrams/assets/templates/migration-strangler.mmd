@@ -1,0 +1,46 @@
+%% Template: migration-strangler
+%% Use for: incrementally replacing a legacy system with Go services.
+%% Show the routing rule that decides old versus new, and the cutover criteria.
+flowchart TD
+    classDef legacy fill:#374151,stroke:#6B7280,color:#F9FAFB
+    classDef new fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef router fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef data fill:#065F46,stroke:#047857,color:#ECFDF5
+    classDef gate fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+
+    client["Clients (unchanged contract)"]:::router
+    facade["Routing facade<br/>path and header based split"]:::router
+
+    subgraph legacyside["Legacy monolith"]
+        legorders["Orders module"]:::legacy
+        leginvoice["Invoicing module"]:::legacy
+        legship["Shipping module"]:::legacy
+    end
+
+    subgraph goside["Go services"]
+        goorders["cmd/orders-api<br/>migrated"]:::new
+        goinvoice["cmd/invoice-api<br/>in progress"]:::new
+    end
+
+    shareddb[("Shared database<br/>during transition")]:::data
+    ownerdb[("orders schema<br/>owned by Go service")]:::data
+
+    shadow["Shadow traffic<br/>compare responses"]:::gate
+    gate1{"Parity, latency and error budget met<br/>for 7 days?"}:::gate
+
+    client --> facade
+    facade -->|"/v1/orders"| goorders
+    facade -->|"/v1/invoices"| leginvoice
+    facade -->|"everything else"| legship
+    facade -.->|"mirrored copy"| shadow
+    shadow -.-> goinvoice
+    shadow -.-> leginvoice
+
+    goorders --> ownerdb
+    goinvoice --> shareddb
+    leginvoice --> shareddb
+    legorders -.->|"decommissioned"| ownerdb
+
+    shadow --> gate1
+    gate1 -->|"yes"| facade
+    gate1 -->|"no"| goinvoice

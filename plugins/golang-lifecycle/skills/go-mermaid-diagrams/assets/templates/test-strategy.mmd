@@ -1,0 +1,44 @@
+%% Template: test-strategy
+%% Use for: showing which kind of test covers which boundary in a Go service,
+%% and which command runs it.
+flowchart TD
+    classDef fast fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef mid fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef slow fill:#7C2D12,stroke:#9A3412,color:#FFF7ED
+    classDef cmd fill:#0F172A,stroke:#334155,color:#E2E8F0
+
+    subgraph unit["Unit - table-driven, no I/O"]
+        u1["internal/money<br/>pure functions"]:::fast
+        u2["internal/order<br/>domain rules with fakes"]:::fast
+    end
+
+    subgraph contract["Contract - real boundaries, fake peers"]
+        c1["handlers via httptest.NewServer"]:::mid
+        c2["repository against a<br/>throwaway PostgreSQL"]:::mid
+        c3["golden files for<br/>serialized output"]:::mid
+    end
+
+    subgraph property["Property and concurrency"]
+        p1["FuzzParse: go test -fuzz"]:::mid
+        p2["synctest.Test for<br/>time-dependent goroutines"]:::mid
+        p3["-race on every concurrent test"]:::mid
+    end
+
+    subgraph e2e["End to end"]
+        e1["compose stack, real binaries"]:::slow
+        e2["load and soak profile"]:::slow
+    end
+
+    cmd1["go test ./... -count=1"]:::cmd
+    cmd2["go test -race ./..."]:::cmd
+    cmd3["go test -tags=integration ./..."]:::cmd
+    cmd4["go test -run=^$ -fuzz=Fuzz -fuzztime=60s"]:::cmd
+    cmd5["go test -coverprofile=cover.out ./...<br/>go tool cover -func=cover.out"]:::cmd
+
+    unit --> cmd1
+    property --> cmd2
+    property --> cmd4
+    contract --> cmd3
+    e2e --> cmd3
+    unit --> cmd5
+    contract --> cmd5

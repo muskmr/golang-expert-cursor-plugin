@@ -1,0 +1,39 @@
+%% Template: state-machine
+%% Use for: the lifecycle of a domain entity, a job, or a connection.
+%% Always use stateDiagram-v2. Label every transition with the event that causes it.
+%% The state names should match the Go constants exactly.
+stateDiagram-v2
+    direction LR
+
+    [*] --> Draft : NewOrder()
+
+    Draft --> Submitted : Submit()
+    Draft --> Cancelled : Cancel()
+
+    Submitted --> Reserving : reserve inventory
+
+    state Reserving {
+        direction LR
+        [*] --> CheckingStock
+        CheckingStock --> Reserved : all lines available
+        CheckingStock --> Backordered : partial availability
+        Backordered --> Reserved : restocked
+        Reserved --> [*]
+    }
+
+    Reserving --> AwaitingPayment : reservation confirmed
+    Reserving --> Cancelled : reservation expired
+
+    AwaitingPayment --> Paid : payment captured
+    AwaitingPayment --> PaymentFailed : provider declined
+    PaymentFailed --> AwaitingPayment : retry (max 3)
+    PaymentFailed --> Cancelled : retries exhausted
+
+    Paid --> Fulfilled : shipment dispatched
+    Fulfilled --> [*]
+    Cancelled --> [*]
+
+    note right of PaymentFailed
+        Retries are bounded and driven by
+        context deadline, not by a sleep loop.
+    end note

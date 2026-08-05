@@ -1,0 +1,23 @@
+%% Template: module-dependency-graph
+%% Use for: explaining a `go mod graph` result and a minimal version selection outcome.
+%% Edge label = the version required by that edge. Node label = the version selected.
+flowchart LR
+    classDef main fill:#00ADD8,stroke:#007D9C,color:#04222B
+    classDef direct fill:#1E3A8A,stroke:#1D4ED8,color:#EFF6FF
+    classDef indirect fill:#334155,stroke:#475569,color:#E2E8F0
+    classDef selected fill:#065F46,stroke:#047857,color:#ECFDF5
+
+    mainmod["example.com/service<br/>go 1.25.0"]:::main
+    chi["github.com/go-chi/chi/v5<br/>selected v5.2.1"]:::direct
+    pgx["github.com/jackc/pgx/v5<br/>selected v5.7.2"]:::direct
+    otel["go.opentelemetry.io/otel<br/>selected v1.34.0"]:::selected
+    puddle["github.com/jackc/puddle/v2<br/>selected v2.2.2"]:::indirect
+
+    mainmod -->|"require v5.2.1"| chi
+    mainmod -->|"require v5.7.2"| pgx
+    mainmod -->|"require v1.32.0"| otel
+    pgx -->|"require v2.2.2"| puddle
+    pgx -->|"require v1.34.0"| otel
+
+    note["MVS picks the highest version<br/>demanded by any edge: v1.34.0 wins."]:::indirect
+    otel -.-> note

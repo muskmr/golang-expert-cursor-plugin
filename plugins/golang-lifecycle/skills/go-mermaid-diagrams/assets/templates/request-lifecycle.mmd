@@ -1,0 +1,45 @@
+%% Template: request-lifecycle
+%% Use for: one HTTP request through a Go service, including the deadline and error paths.
+%% Always draw the timeout branch - it is where most production incidents live.
+%% Keep activate/deactivate pairs outside alt blocks so every activation is balanced.
+sequenceDiagram
+    autonumber
+    actor Client
+    participant MW as Middleware chain
+    participant H as internal/api.Handler
+    participant S as internal/order.Service
+    participant DB as internal/storage
+    participant PG as PostgreSQL
+
+    Client->>MW: POST /v1/orders
+    MW->>MW: recover, request ID, slog attributes
+    MW->>H: ServeHTTP with 5s context deadline
+    activate H
+    H->>H: decode and validate request body
+    H->>S: CreateOrder(ctx, cmd)
+    activate S
+    S->>DB: QueryRowContext(ctx, query, args)
+    activate DB
+    DB->>PG: SELECT ... FOR UPDATE
+
+    alt query succeeds
+        PG-->>DB: row
+        DB-->>S: order
+        S-->>H: order, nil
+        H-->>MW: 201 Created
+    else context deadline exceeded
+        PG--)DB: statement cancelled
+        DB-->>S: context.DeadlineExceeded
+        S-->>H: wrapped error
+        H-->>MW: 504 Gateway Timeout
+    else domain validation fails
+        DB-->>S: row
+        S-->>H: ErrInvalidOrder
+        H-->>MW: 400 Bad Request
+    end
+
+    deactivate DB
+    deactivate S
+    deactivate H
+    MW->>MW: log status, duration, error
+    MW-->>Client: response

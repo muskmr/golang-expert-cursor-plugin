@@ -1,0 +1,41 @@
+%% Template: worker-pool
+%% Use for: bounded parallelism - a fixed set of worker goroutines draining a job channel.
+%% Shows the two things reviewers look for: a bounded pool and a clean shutdown.
+sequenceDiagram
+    autonumber
+    participant Caller as Caller
+    participant Pool as Pool.Run(ctx)
+    participant Jobs as jobs chan Job
+    participant W1 as worker 1
+    participant W2 as worker 2
+    participant Res as results chan Result
+    participant WG as sync.WaitGroup
+
+    Caller->>Pool: Run(ctx, jobs, n)
+    Pool->>WG: Add(n)
+    Pool->>W1: go worker(ctx, jobs, results)
+    Pool->>W2: go worker(ctx, jobs, results)
+
+    loop for job := range jobs
+        Jobs->>W1: job
+        W1->>Res: Result{Value, Err}
+        Jobs->>W2: job
+        W2->>Res: Result{Value, Err}
+    end
+
+    alt producer finishes normally
+        Caller->>Jobs: close(jobs)
+        W1->>WG: Done()
+        W2->>WG: Done()
+    else caller cancels
+        Caller->>Pool: cancel()
+        Pool--)W1: ctx.Done()
+        Pool--)W2: ctx.Done()
+        W1->>WG: Done()
+        W2->>WG: Done()
+    end
+
+    Pool->>WG: Wait()
+    Pool->>Res: close(results)
+    Res-->>Caller: range results until closed
+    Note over Pool,WG: Exactly one goroutine closes results,<br/>and it is the one that owns the channel.

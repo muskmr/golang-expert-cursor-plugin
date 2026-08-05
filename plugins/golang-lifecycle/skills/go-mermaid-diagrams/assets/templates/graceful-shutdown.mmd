@@ -1,0 +1,38 @@
+%% Template: graceful-shutdown
+%% Use for: the shutdown sequence of a Go server. Every long-lived component
+%% must appear here with the exact call that stops it.
+sequenceDiagram
+    autonumber
+    participant OS as Orchestrator
+    participant Main as func main
+    participant Srv as http.Server
+    participant Cons as Kafka consumer
+    participant Pool as database/sql pool
+    participant Tel as Tracer provider
+
+    OS->>Main: SIGTERM
+    Main->>Main: ctx from signal.NotifyContext(SIGINT, SIGTERM)
+    Note over Main: Readiness probe starts failing first,<br/>so the load balancer drains traffic.
+
+    Main->>Srv: Shutdown(shutdownCtx) with 30s timeout
+    Srv->>Srv: stop accepting, finish in-flight requests
+
+    par drain in parallel
+        Srv-->>Main: nil once handlers return
+    and
+        Main->>Cons: cancel consumer ctx
+        Cons->>Cons: commit offsets, leave group
+        Cons-->>Main: closed
+    end
+
+    Main->>Tel: ForceFlush then Shutdown(ctx)
+    Tel-->>Main: spans exported
+    Main->>Pool: db.Close()
+    Pool-->>Main: connections released
+    Main-->>OS: exit 0
+
+    alt shutdown deadline exceeded
+        Srv--)Main: context.DeadlineExceeded
+        Main->>Main: log the stuck component
+        Main-->>OS: exit 1
+    end

@@ -1,34 +1,47 @@
-# Cursor plugin template
+# Golang Lifecycle Toolkit (Cursor plugin)
 
-Build and publish Cursor Marketplace plugins from a single repo.
+Marketplace-ready Cursor plugin that turns Cursor into a universal instrument for
+**Go (Golang)** solution work — for solution developers, application developers
+and the full development lifecycle (DLC).
 
-Two starter plugins are included:
+Built from the [Cursor plugin template](https://github.com/cursor/plugin-template)
+and grounded in the canonical content that powers [go.dev](https://go.dev)
+([golang/website](https://github.com/golang/website)).
 
-- **starter-simple**: rules and skills only
-- **starter-advanced**: rules, skills, agents, commands, hooks, MCP, and scripts
+## Plugin
 
-## Getting started
+| Plugin | Path | Purpose |
+| --- | --- | --- |
+| **golang-lifecycle** | [`plugins/golang-lifecycle`](./plugins/golang-lifecycle) | Rules, skills, agents, commands, hooks, scripts, gopls MCP, Mermaid templates |
 
-[Use this template](https://github.com/cursor/plugin-template/generate) to create a new repository, then customize:
+See [`plugins/golang-lifecycle/README.md`](./plugins/golang-lifecycle/README.md)
+for usage, slash commands and script entrypoints.
 
-1. `.cursor-plugin/marketplace.json`: set marketplace `name`, `owner`, and `metadata`.
-2. `plugins/*/.cursor-plugin/plugin.json`: set `name` (lowercase kebab-case), `displayName`, `author`, `description`, `keywords`, `license`, and `version`.
-3. Replace placeholder rules, skills, agents, commands, hooks, scripts, and logos.
+## Lifecycle coverage
 
-To add more plugins, see `docs/add-a-plugin.md`.
+- **Analyse** — layout classification, build/vet/test health, dependency and vulnerability posture
+- **Design** — canonical `cmd/` + `internal/` layouts, additive API evolution, Mermaid architecture
+- **Build & modernize** — toolchain commands, `go fix` modernizers, slog/context/errors migrations
+- **Test** — table-driven tests, fuzzing, synctest, race detector, benchmarks
+- **Secure** — govulncheck triage, injection prevention, FIPS knobs, threat-model awareness
+- **Profile & operate** — pprof, traces, GC/`GOMEMLIMIT`, PGO, slog + OTLP signals
+- **Upgrade & release** — GODEBUG-aware toolchain bumps, semver / `/v2` module paths, CI gates
 
-## Single plugin vs multi-plugin
+## Mermaid templates
 
-This template defaults to **multi-plugin** (multiple plugins in one repo).
+`plugins/golang-lifecycle/skills/go-mermaid-diagrams/assets/templates/` ships
+24 templates rendered successfully with `@mermaid-js/mermaid-cli`, plus
+`scripts/mermaid-lint.mjs` to keep new diagrams canonical.
 
-For a **single plugin**, move your plugin folder contents to the repository root, keep one `.cursor-plugin/plugin.json`, and remove `.cursor-plugin/marketplace.json`.
+## Validate
 
-## Submission checklist
+```bash
+node scripts/validate-template.mjs
+node plugins/golang-lifecycle/scripts/mermaid-lint.mjs plugins/golang-lifecycle/skills/go-mermaid-diagrams/assets/templates
+```
 
-- Each plugin has a valid `.cursor-plugin/plugin.json`.
-- Plugin names are unique, lowercase, and kebab-case.
-- `.cursor-plugin/marketplace.json` entries map to real plugin folders.
-- All frontmatter metadata is present in rule, skill, agent, and command files.
-- Logos are committed and referenced with relative paths.
-- `node scripts/validate-template.mjs` passes.
-- Repository link is ready for submission to the Cursor team (Slack or `kniparko@anysphere.com`).
+## Submission
+
+- Plugin manifest: `plugins/golang-lifecycle/.cursor-plugin/plugin.json`
+- Marketplace manifest: `.cursor-plugin/marketplace.json`
+- Submit at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish)
