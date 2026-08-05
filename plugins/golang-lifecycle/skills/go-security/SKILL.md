@@ -21,6 +21,9 @@ Canonical sources: [Security Best Practices](https://go.dev/doc/security/best-pr
 go install golang.org/x/vuln/cmd/govulncheck@latest
 govulncheck ./...
 govulncheck -json ./... > vuln.json    # CI
+# plugin helper (network install is opt-in):
+#   ./scripts/go-vuln.sh
+#   ./scripts/go-vuln.sh --install
 ```
 
 3. **Triage** with `vulnerability-triage.mmd`:
