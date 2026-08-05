@@ -96,15 +96,20 @@ find "${DEST}/scripts" -type f \( -name '*.sh' -o -name '*.mjs' \) -exec chmod +
 
 # Rewrite logo to an absolute file:// URL so Cursor's local plugin UI can load it
 # even when relative paths are resolved as GitHub raw URLs (marketplace path).
+# Also point MCP at the absolute wrapper script so Cursor can spawn it without
+# relying on plugin-relative command resolution.
 # Never rewrite when DEST is a symlink into the git checkout — that would dirty the repo.
 MANIFEST="${DEST}/.cursor-plugin/plugin.json"
+MCP_JSON="${DEST}/mcp.json"
+GOPLS_WRAPPER="${DEST}/scripts/run-gopls-mcp.sh"
 if [[ -L "${DEST}" ]]; then
-  echo "note: symlink install keeps relative logo (assets/logo.svg)."
-  echo "      For a guaranteed local logo, re-run without --link (copy mode)."
-elif [[ -f "${MANIFEST}" ]] && command -v node >/dev/null 2>&1; then
-  GLC_MANIFEST="${MANIFEST}" \
-  GLC_LOGO_PNG="${DEST}/assets/logo.png" \
-  node --input-type=module <<'EOF'
+  echo "note: symlink install keeps relative logo/MCP paths."
+  echo "      For a guaranteed local logo + MCP wrapper path, re-run without --link."
+elif command -v node >/dev/null 2>&1; then
+  if [[ -f "${MANIFEST}" ]]; then
+    GLC_MANIFEST="${MANIFEST}" \
+    GLC_LOGO_PNG="${DEST}/assets/logo.png" \
+    node --input-type=module <<'EOF'
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -119,8 +124,61 @@ j.author = { name: "muskmr", email: "muskmr@gmail.com" };
 writeFileSync(manifestPath, JSON.stringify(j, null, 2) + "\n");
 console.log("logo ->", j.logo);
 EOF
+  fi
+  if [[ -f "${MCP_JSON}" && -f "${GOPLS_WRAPPER}" ]]; then
+    GLC_MCP_JSON="${MCP_JSON}" \
+    GLC_GOPLS_WRAPPER="${GOPLS_WRAPPER}" \
+    GLC_HOME="${HOME}" \
+    node --input-type=module <<'EOF'
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+const mcpPath = process.env.GLC_MCP_JSON;
+const wrapper = path.resolve(process.env.GLC_GOPLS_WRAPPER);
+const home = process.env.GLC_HOME || process.env.HOME || "";
+const j = JSON.parse(readFileSync(mcpPath, "utf8"));
+if (j.mcpServers && j.mcpServers.gopls) {
+  j.mcpServers.gopls.command = wrapper;
+  j.mcpServers.gopls.env = {
+    PATH: [
+      `${home}/go/bin`,
+      `${home}/.local/bin`,
+      "/opt/homebrew/bin",
+      "/usr/local/go/bin",
+      "/usr/local/bin",
+      "/usr/bin",
+      "/bin",
+    ].join(":"),
+  };
+  writeFileSync(mcpPath, JSON.stringify(j, null, 2) + "\n");
+  console.log("mcp gopls.command ->", wrapper);
+}
+EOF
+  fi
 else
-  echo "warning: node not found; left relative logo path (marketplace-style)" >&2
+  echo "warning: node not found; left relative logo/MCP paths" >&2
+fi
+
+# gopls presence check (MCP needs it)
+GOPLS_FOUND=""
+if command -v gopls >/dev/null 2>&1; then
+  GOPLS_FOUND="$(command -v gopls)"
+elif [[ -x "${HOME}/go/bin/gopls" ]]; then
+  GOPLS_FOUND="${HOME}/go/bin/gopls"
+fi
+if [[ -z "${GOPLS_FOUND}" ]]; then
+  cat <<EOF
+
+warning: gopls not found on PATH or ~/go/bin.
+  MCP server "gopls" will fail with spawn ENOENT until you install it:
+
+    go install golang.org/x/tools/gopls@latest
+
+  Then fully quit and reopen Cursor (GUI apps often miss shell PATH).
+  Rules, skills and commands still work without gopls.
+EOF
+else
+  echo "gopls found: ${GOPLS_FOUND}"
 fi
 
 # Sanity checks

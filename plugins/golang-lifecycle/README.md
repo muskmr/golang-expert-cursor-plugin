@@ -39,7 +39,7 @@ repository (open source, required by Cursor).
 | **Commands** | `/go-analyze`, `/go-design`, `/go-review`, `/go-test`, `/go-secure`, `/go-profile`, `/go-upgrade`, `/go-diagram` |
 | **Hooks** | `gofmt` after Go edits, shell guard, session-end build audit (local shell only; no downloads) |
 | **Scripts** | `go-audit`, `go-deps`, `go-vuln`, `go-profile`, `go-vet-fmt`, `mermaid-lint` |
-| **MCP** | Optional `gopls mcp` (requires `gopls` ≥ 0.20 on `PATH`) |
+| **MCP** | Optional `gopls mcp` via `scripts/run-gopls-mcp.sh` (finds `~/go/bin/gopls` even when Cursor’s GUI PATH is minimal; requires gopls ≥ 0.20) |
 
 ## Mermaid templates
 

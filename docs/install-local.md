@@ -7,7 +7,11 @@ Marketplace listing.
 
 - Cursor desktop (macOS, Linux, or Windows)
 - This repository checked out locally
-- Optional: Go toolchain + `gopls` (`go install golang.org/x/tools/gopls@latest`) for MCP
+- For the **gopls MCP** server (optional but recommended):
+  - Go toolchain
+  - `gopls` ≥ 0.20: `go install golang.org/x/tools/gopls@latest`
+  - Binary usually lands in `~/go/bin/gopls` — Cursor’s GUI often does **not**
+    inherit your shell `PATH`, which is what causes `spawn gopls ENOENT`
 
 ## Quick install
 
@@ -103,7 +107,7 @@ Assets committed in the repo: `logo.svg`, `logo.png`, `logo-128.png`,
 
 | Symptom | Fix |
 | --- | --- |
-| Plugin missing after reload | Confirm path is `~/.cursor/plugins/local/…` (not `plugins/cache/`). Enable third-party plugins. On Team plans, ask admin to allow user-local plugins. |
-| Logo missing | Re-run `./scripts/install-local.sh` (not `--link` if symlink blocked). Confirm `assets/logo.png` exists in the install dir and `plugin.json` `logo` starts with `file:`. |
+| `gopls` MCP fails / `spawn gopls ENOENT` | Install gopls: `go install golang.org/x/tools/gopls@latest`. Confirm `~/go/bin/gopls version`. Re-run `./scripts/install-local.sh` (copy mode), then **fully quit** Cursor and reopen. Rules/skills still work without MCP. |
 | Hooks not running | Open Cursor **Hooks** output channel; confirm `hooks/hooks.json` is present in the install. |
-| `gopls` MCP fails | Install gopls on `PATH`, or ignore MCP — rules/skills/commands still work. |
+| Logo missing | Re-run `./scripts/install-local.sh` (not `--link` if symlink blocked). Confirm `assets/logo.png` exists in the install dir and `plugin.json` `logo` starts with `file:`. |
+| Plugin missing after reload | Confirm path is `~/.cursor/plugins/local/…` (not `plugins/cache/`). Enable third-party plugins. On Team plans, ask admin to allow user-local plugins. |
