@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "gopls": {
-      "command": "gopls",
-      "args": ["mcp"]
+      "command": "./scripts/run-gopls-mcp.sh",
+      "env": {
+        "PATH": "${userHome}/go/bin:${userHome}/.local/bin:/opt/homebrew/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:${env:PATH}"
+      }
     }
   }
 }
