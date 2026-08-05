@@ -1,11 +1,12 @@
 {
   "name": "golang-lifecycle-toolkit",
   "owner": {
-    "name": "Golang Lifecycle Toolkit contributors"
+    "name": "muskmr",
+    "email": "muskmr@gmail.com"
   },
   "metadata": {
     "description": "Cursor marketplace plugins for Go engineering across the full development lifecycle.",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {

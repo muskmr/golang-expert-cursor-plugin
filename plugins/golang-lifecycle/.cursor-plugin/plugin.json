@@ -1,11 +1,14 @@
 {
   "name": "golang-lifecycle",
   "displayName": "Golang Lifecycle Toolkit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "End-to-end Go engineering toolkit grounded in go.dev: analyse, design, build, test, secure, profile, upgrade and release Go solutions, with canonical Mermaid diagram templates.",
   "author": {
-    "name": "Golang Lifecycle Toolkit contributors"
+    "name": "muskmr",
+    "email": "muskmr@gmail.com"
   },
+  "homepage": "https://github.com/muskmr/golang-expert-cursor-plugin",
+  "repository": "https://github.com/muskmr/golang-expert-cursor-plugin",
   "license": "MIT",
   "keywords": [
     "go",
